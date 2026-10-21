@@ -5,13 +5,14 @@ GitHub Actions(해외 IP)에서는 아이템매니아 연결이 시간 초과된
 ## 0. 준비
 
 - Git for Windows(Git Bash), Python 3
-- Python 실행 명령 확인: Git Bash에서 `python --version`이 "Python was not found…"를 출력하면 MS Store 바로가기다. 이때는 `py --version`이 동작하는지 확인하고 아래의 `PYTHON=python`을 `PYTHON=py`로 바꾼다.
+- Python 실행 명령 확인: 아래 명령은 `py`(Python 런처) 기준이다. Git Bash에서 `py --version`이 동작하지 않으면 `python --version`을 확인하고 `PYTHON=py`를 `PYTHON=python`으로 바꾼다. (`python`이 "Python was not found…"를 출력하면 MS Store 바로가기라 쓸 수 없다.)
+- `PYTHONIOENCODING=utf-8`은 출력·`rates.log`의 한글 깨짐(cp949)을 막는다.
 
 ## 1. 레포 받기·첫 실행 (Git Bash)
 
 ```bash
 git clone https://github.com/Jawooni/maple_boss_ssalmuk.git
-cd maple_boss_ssalmuk && PYTHON=python sh update_rates.sh && git log --oneline -1
+cd maple_boss_ssalmuk && PYTHON=py PYTHONIOENCODING=utf-8 sh update_rates.sh && git log --oneline -1
 ```
 
 첫 푸시 때 GitHub 로그인 창이 뜬다. GitHub에 `rates.js 갱신 (날짜)` 커밋이 생기고, 1~2분 뒤 사이트의 "자동 기록 마지막 실행"이 바뀌면 성공.
@@ -23,7 +24,7 @@ cd maple_boss_ssalmuk && PYTHON=python sh update_rates.sh && git log --oneline -
 
 ```powershell
 $dir = "/c/Users/이름/maple_boss_ssalmuk"
-$action = New-ScheduledTaskAction -Execute "C:\Program Files\Git\bin\bash.exe" -Argument "-lc `"cd '$dir' && PYTHON=python sh update_rates.sh >> rates.log 2>&1`""
+$action = New-ScheduledTaskAction -Execute "C:\Program Files\Git\bin\bash.exe" -Argument "-lc `"cd '$dir' && PYTHON=py PYTHONIOENCODING=utf-8 sh update_rates.sh >> rates.log 2>&1`""
 $trigger = New-ScheduledTaskTrigger -Daily -At 11:00
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable
 Register-ScheduledTask -TaskName "maple_boss_rates" -Action $action -Trigger $trigger -Settings $settings

@@ -8,8 +8,8 @@
 | 항목 | 상태 |
 |---|---|
 | 사이트 | GitHub Pages 배포됨: https://jawooni.github.io/maple_boss_ssalmuk/ |
-| 보스 조회 | 브라우저 → 넥슨 Open API 직접 호출. `github.io` 출처 CORS 허용 확인(curl 사전 요청). **실제 API Key로 배포 사이트 조회는 미검증** |
-| 시세 자동 수집 | **미가동.** `rates.js`는 2026-10-20 시세까지(18개 서버, 1620건) |
+| 보스 조회 | 브라우저 → 넥슨 Open API 직접 호출. `github.io` 출처 CORS 허용 확인(curl 사전 요청). 실제 API Key로 배포 사이트 조회 확인됨(2026-10-21, 캐릭터 목록·보스 조회·원화 계산) |
+| 시세 자동 수집 | **가동.** 집 데스크톱 작업 스케줄러 `maple_boss_rates`(매일 11:00, 2026-10-21 등록). `rates.js`는 2026-10-20 시세까지(18개 서버, 1620건) |
 | GitHub Actions | 해외 IP에서 아이템매니아 연결 시간 초과(`<urlopen error timed out>`)로 실패 → 예약 실행 제거, 수동 실행만 남김 |
 | Oracle Cloud | 가입 화면 홈 영역에 서울·춘천 없음 → 사용 안 함. 집 데스크톱 작업 스케줄러로 대체(`SETUP_DESKTOP.md`) |
 
