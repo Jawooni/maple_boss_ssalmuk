@@ -209,6 +209,8 @@ const fmt = n => Math.round(n).toLocaleString('ko-KR');
 // 1.23억 / 7,320만 형식
 const short = n => n >= 1e8 ? `${+(n / 1e8).toFixed(2)}억` : n >= 1e4 ? `${fmt(n / 1e4)}만` : fmt(n);
 const today = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10); // KST
+// API·사용자 입력 문자열을 innerHTML에 넣기 전 이스케이프
+const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 
 let prices = load('prices', null) || defaultPriceMap();
 let chars = load('chars', []);
@@ -227,7 +229,7 @@ function defaultPriceMap() {
 const norm = s => (s || '').replace(/\s/g, '').replace('노말', '노멀');
 const diffKo = d => DIFF_KO[d] || d;
 const normDiff = d => norm(diffKo(d));
-const diffTag = (d, off) => `<span class="diff ${DIFF_EN[diffKo(d)] || ''}${off ? ' off' : ''}">${diffKo(d)}</span>`;
+const diffTag = (d, off) => `<span class="diff ${DIFF_EN[diffKo(d)] || ''}${off ? ' off' : ''}">${esc(diffKo(d))}</span>`;
 
 // API의 보스명/난이도를 가격표 키로 변환. 없으면 원문 그대로의 키.
 function priceKey(name, diff) {
@@ -378,11 +380,11 @@ function renderChars() {
   const list = chars.filter(c => charWorld === '전체' || c.world_name === charWorld);
   const pages = Math.max(1, Math.ceil(list.length / PAGE));
   charPage = Math.min(charPage, pages - 1);
-  $('worldTabs').innerHTML = chars.length ? worlds.map(w => `<button data-world="${w}" class="${w === charWorld ? 'on' : ''}">${w}</button>`).join('') : '';
+  $('worldTabs').innerHTML = chars.length ? worlds.map(w => `<button data-world="${esc(w)}" class="${w === charWorld ? 'on' : ''}">${esc(w)}</button>`).join('') : '';
   $('charGrid').innerHTML = list.slice(charPage * PAGE, (charPage + 1) * PAGE).map(c => `
-    <button class="char-card ${selected.has(c.ocid) ? 'on' : ''}" data-ocid="${c.ocid}">
-      <span class="mono">${c.character_name[0]}</span><b>${c.character_name}</b>
-      <small>Lv.${c.character_level} · ${c.character_class}</small><small>${c.world_name}</small></button>`).join('')
+    <button class="char-card ${selected.has(c.ocid) ? 'on' : ''}" data-ocid="${esc(c.ocid)}">
+      <span class="mono">${esc(c.character_name[0])}</span><b>${esc(c.character_name)}</b>
+      <small>Lv.${esc(c.character_level)} · ${esc(c.character_class)}</small><small>${esc(c.world_name)}</small></button>`).join('')
     || '<div class="muted">캐릭터 목록을 불러오세요.</div>';
   const pg = (p, label, dis) => `<button data-page="${p}" ${dis ? 'disabled' : ''} class="${p === charPage && label == p + 1 ? 'on' : ''}">${label}</button>`;
   $('pager').innerHTML = pages > 1 ? pg(0, '«', charPage === 0) + pg(charPage - 1, '‹', charPage === 0) +
@@ -435,18 +437,18 @@ function renderBoard() {
     const earned = mine.filter(x => x.done).reduce((s, x) => s + x.share, 0);
     const cnt = d.weekly_boss_clear_count, lim = d.weekly_boss_clear_limit_count;
     return `<div class="board-row">
-      <button class="who" data-party-of="${r.ocid}">
-        <b>${d.character_name}</b>
-        <small>Lv.${d.character_level || '-'} ${d.character_class || ''}</small>
-        <small>${d.world_name || ''} · 기준일 ${(d.date || '').slice(0, 10)}</small>
+      <button class="who" data-party-of="${esc(r.ocid)}">
+        <b>${esc(d.character_name)}</b>
+        <small>Lv.${esc(d.character_level || '-')} ${esc(d.character_class)}</small>
+        <small>${esc(d.world_name)} · 기준일 ${esc((d.date || '').slice(0, 10))}</small>
         <span class="count ${cnt != null && cnt === lim ? 'full' : ''}">주간 처치 ${cnt ?? '-'} / ${lim ?? '-'}</span>
         <span class="count">완료 몫 ${short(earned)}</span>
         <span class="hint">파티 인원 설정 ›</span>
       </button>
       <div class="bosses">
-        ${r.error ? `<div class="warn">조회 실패: ${r.error}</div>` : ''}
-        ${mine.map(x => `<div class="boss ${x.done ? 'done' : ''}" title="${x.b.content_name} ${diffKo(x.b.difficulty)} · ${x.n}인 · 내 몫 ${fmt(x.share)}">
-          ${diffTag(x.b.difficulty)}<span class="name">${x.b.content_name}</span>
+        ${r.error ? `<div class="warn">조회 실패: ${esc(r.error)}</div>` : ''}
+        ${mine.map(x => `<div class="boss ${x.done ? 'done' : ''}" title="${esc(x.b.content_name)} ${esc(diffKo(x.b.difficulty))} · ${x.n}인 · 내 몫 ${fmt(x.share)}">
+          ${diffTag(x.b.difficulty)}<span class="name">${esc(x.b.content_name)}</span>
           ${x.cycle === '월간' ? '<em>월간</em>' : ''}${x.n > 1 ? `<em>${x.n}인</em>` : ''}
           <span class="state">${x.done ? '완료' : '미완료'}</span></div>`).join('')}
       </div></div>`;
@@ -457,7 +459,7 @@ $('board').onclick = e => { const b = e.target.closest('[data-party-of]'); if (b
 // 설정 > 보스 클리어 인원: 조회된 캐릭터 목록
 function renderPartyList() {
   $('partyList').innerHTML = results.length
-    ? results.map(r => `<button data-party-of="${r.ocid}">${r.data.character_name}</button>`).join('')
+    ? results.map(r => `<button data-party-of="${esc(r.ocid)}">${esc(r.data.character_name)}</button>`).join('')
     : '보스 현황을 조회하면 캐릭터별로 설정할 수 있습니다.';
 }
 $('partyList').onclick = e => { const b = e.target.closest('[data-party-of]'); if (b) openParty(b.dataset.partyOf); };
@@ -473,11 +475,11 @@ function renderParty() {
     ${mine.map(x => {
       const diffs = x.entry ? Object.values(prices).filter(p => p.name === x.entry.name).map(p => p.diff) : [diffKo(x.b.difficulty)];
       const cur = x.entry ? x.entry.diff : diffKo(x.b.difficulty);
-      return `<tr><td>${x.entry ? x.entry.name : x.b.content_name}${x.done ? ' <span class="muted">✓</span>' : ''}</td>
+      return `<tr><td>${esc(x.entry ? x.entry.name : x.b.content_name)}${x.done ? ' <span class="muted">✓</span>' : ''}</td>
         <td>${diffs.map(df => diffTag(df, df !== cur)).join(' ')}</td>
-        <td><select data-party="${x.ocid}|${x.key}">${Array.from({ length: maxParty(x.key) }, (_, i) =>
+        <td><select data-party="${esc(x.ocid)}|${esc(x.key)}">${Array.from({ length: maxParty(x.key) }, (_, i) =>
           `<option ${i + 1 === x.n ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></td>
-        <td class="num">${x.entry ? short(x.entry.price) : `<input type="number" min="0" placeholder="가격 입력" data-newprice="${x.key}" data-cycle="${x.cycle}">`}</td>
+        <td class="num">${x.entry ? short(x.entry.price) : `<input type="number" min="0" placeholder="가격 입력" data-newprice="${esc(x.key)}" data-cycle="${x.cycle}">`}</td>
         <td class="num">${short(x.share)}</td></tr>`;
     }).join('')}</table>
     <div class="muted">최대 인원: 익스트림 스우 2인 / ${PARTY3.join('·')} 3인 / 그 외 6인. 내 몫 = 결정석 가격 ÷ 인원(소수점 버림).</div>`
@@ -528,8 +530,8 @@ $('addRate').onclick = () => {
 
 function renderPrices() {
   $('priceTable').innerHTML = '<tr><th>주기</th><th>보스</th><th>난이도</th><th class="num">가격 (메소)</th></tr>' +
-    Object.entries(prices).map(([k, p]) => `<tr><td>${p.cycle}</td><td>${p.name}</td><td>${p.diff}</td>
-      <td class="num"><input type="number" min="0" value="${p.price}" data-price="${k}" style="width:140px"></td></tr>`).join('');
+    Object.entries(prices).map(([k, p]) => `<tr><td>${esc(p.cycle)}</td><td>${esc(p.name)}</td><td>${esc(p.diff)}</td>
+      <td class="num"><input type="number" min="0" value="${esc(p.price)}" data-price="${esc(k)}" style="width:140px"></td></tr>`).join('');
   $('priceTable').querySelectorAll('[data-price]').forEach(el => el.onchange = () => {
     prices[el.dataset.price].price = Number(el.value) || 0; save('prices', prices); render();
   });
