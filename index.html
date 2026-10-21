@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>메이플 보스 수익 계산기</title>
+<style>
+  /* 메이플스토리 글꼴(넥슨 무료 글꼴, 눈누 CDN): Light = 본문(400), Bold = 강조(700) */
+  @font-face { font-family: 'Maplestory'; font-weight: 400; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_20-04@2.1/MaplestoryOTFLight.woff') format('woff'); }
+  @font-face { font-family: 'Maplestory'; font-weight: 700; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_20-04@2.1/MaplestoryOTFBold.woff') format('woff'); }
+  /* 색·모서리는 DESIGN.md(디스코드 계열) 토큰 */
+  :root { --canvas: #0a0d3a; --surface: #1e2353; --surface-2: #2a3070; --hairline: #2f356b; --ink: #ffffff; --sub: rgba(255, 255, 255, 0.62);
+    --primary: #5865f2; --green: #35ed7e; --magenta: #ec48bd; --link: #00b0f4; --warn: #ff6b8a;
+    --d-easy: #7b819c; --d-normal: #00b0f4; --d-hard: #ec48bd; --d-chaos: #9b5cff; --d-extreme: #ff4d6d; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Maplestory', system-ui, 'Malgun Gothic', sans-serif; font-weight: 400; max-width: 1200px; margin: 0 auto; padding: 16px 24px 40px; color: var(--ink);
+    background: radial-gradient(900px 500px at 10% -10%, rgba(88, 101, 242, 0.35), transparent 70%),
+                radial-gradient(800px 500px at 100% 0%, rgba(236, 72, 189, 0.22), transparent 70%), var(--canvas);
+    background-attachment: fixed; min-height: 100vh; }
+  b, strong, th, h1, h2, h3, legend, summary { font-weight: 700; }
+  header { display: flex; align-items: center; gap: 12px; margin: 8px 0 24px; flex-wrap: wrap; }
+  header h1 { font-size: 1.9em; margin: 0; flex: 1; letter-spacing: -0.01em; }
+  section { background: var(--surface); border-radius: 16px; padding: 24px; margin-bottom: 20px; }
+  h2 { margin: 0 0 14px; font-size: 1.3em; }
+  h3 { margin: 18px 0 8px; font-size: 0.95em; color: var(--sub); }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 0.92em; }
+  th, td { border-bottom: 1px solid var(--hairline); padding: 10px 14px; text-align: left; }
+  tr:first-child th { color: var(--sub); font-size: 0.9em; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  input, select, button { font: inherit; color: var(--ink); }
+  input[type=number] { width: 110px; }
+  input, select { border: 1px solid var(--hairline); border-radius: 6px; padding: 6px 10px; background: var(--canvas); color-scheme: dark; }
+  input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: 0; }
+  button { cursor: pointer; border: 0; background: var(--surface-2); border-radius: 12px; padding: 8px 14px; }
+  button:hover { filter: brightness(1.15); }
+  button.primary { background: var(--primary); padding: 10px 20px; }
+  button.go { background: var(--green); color: #000; font-weight: 700; padding: 10px 22px; }
+  label { color: var(--sub); }
+  .muted { color: var(--sub); font-size: 0.85em; }
+  .warn { color: var(--warn); }
+  #summary td { font-weight: 700; }
+  #status { font-size: 0.85em; }
+  details summary { cursor: pointer; font-size: 1.1em; }
+
+  /* 보스 현황 보드: 캐릭터 한 줄 = 왼쪽 정보(클릭 시 파티 인원) + 오른쪽 보스 목록 */
+  .board-row { display: grid; grid-template-columns: 220px 1fr; gap: 16px; padding: 12px; margin-top: 10px; border-radius: 14px; background: rgba(10, 13, 58, 0.45); }
+  .who { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; padding: 14px 16px; border-radius: 12px; background: var(--surface-2); }
+  .who b { font-size: 1.15em; }
+  .who small { color: var(--sub); }
+  .who .hint { font-size: 0.75em; color: var(--link); margin-top: 6px; }
+  .count { font-size: 0.82em; font-variant-numeric: tabular-nums; color: var(--sub); }
+  .count.full { color: var(--green); font-weight: 700; }
+  .bosses { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; align-content: start; }
+  .boss { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px dashed var(--hairline); border-radius: 12px; font-size: 0.88em; color: var(--sub); }
+  .boss.done { border: 1px solid transparent; background: rgba(88, 101, 242, 0.28); color: var(--ink); }
+  .boss .name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .boss .state { font-size: 0.75em; }
+  .boss.done .state { color: var(--green); font-weight: 700; }
+  .boss em { font-style: normal; font-size: 0.7em; background: var(--magenta); color: #fff; padding: 1px 6px; border-radius: 16px; }
+  .diff { display: inline-block; min-width: 2.8em; text-align: center; font-size: 0.72em; font-weight: 700; padding: 2px 6px; border-radius: 50px; color: #fff; }
+  .diff.easy { background: var(--d-easy); } .diff.normal { background: var(--d-normal); } .diff.hard { background: var(--d-hard); }
+  .diff.chaos { background: var(--d-chaos); } .diff.extreme { background: var(--d-extreme); }
+  .diff.off { background: transparent; color: rgba(255, 255, 255, 0.3); box-shadow: inset 0 0 0 1px var(--hairline); }
+  .empty { padding: 32px; text-align: center; color: var(--sub); }
+
+  /* 설정·파티 대화상자 */
+  dialog { border: 0; border-radius: 16px; padding: 0; width: min(960px, 96vw); background: var(--canvas); color: var(--ink); box-shadow: 0 3px 68px rgba(69, 42, 124, 0.6); }
+  dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+  .dlg-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; background: var(--primary); position: sticky; top: 0; z-index: 1; }
+  .dlg-head h2 { margin: 0; }
+  .dlg-head button { background: rgba(255, 255, 255, 0.2); }
+  .dlg-body { padding: 24px; }
+  .dlg-body fieldset { border: 0; background: var(--surface); border-radius: 16px; margin: 0 0 16px; padding: 16px 20px; }
+  .dlg-body legend { float: left; width: 100%; font-size: 1.05em; margin-bottom: 12px; padding: 0; }
+  .dlg-body legend + * { clear: both; }
+  .tabs { display: flex; gap: 6px; margin: 4px 0 12px; flex-wrap: wrap; }
+  .tabs button { border-radius: 50px; padding: 6px 16px; }
+  .tabs button.on { background: var(--primary); }
+  .char-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  .char-card { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 16px 8px; border-radius: 16px; background: var(--surface-2); position: relative; box-shadow: inset 0 0 0 2px transparent; }
+  .char-card .mono { width: 44px; height: 44px; border-radius: 9999px; display: grid; place-items: center; background: var(--canvas); color: var(--sub); font-weight: 700; margin-bottom: 6px; }
+  .char-card small { color: var(--sub); font-size: 0.78em; }
+  .char-card.on { box-shadow: inset 0 0 0 2px var(--green); }
+  .char-card.on .mono { background: var(--green); color: #000; }
+  .char-card.on::after { content: '선택'; position: absolute; top: 8px; right: 8px; font-size: 0.68em; font-weight: 700; background: var(--green); color: #000; padding: 1px 6px; border-radius: 16px; }
+  .pager { display: flex; justify-content: center; gap: 6px; margin: 14px 0; }
+  .pager button { min-width: 36px; padding: 6px 8px; border-radius: 9999px; }
+  .pager button.on { background: var(--primary); }
+  .pager button:disabled { opacity: 0.3; cursor: default; filter: none; }
+  .row-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  #partyList { display: flex; gap: 8px; flex-wrap: wrap; }
+  #partyBody select { width: 70px; }
+  @media (max-width: 767px) {
+    body { padding: 16px; }
+    .board-row { grid-template-columns: 1fr; }
+    .char-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>메이플 보스 수익 계산기</h1>
+  <span id="status" class="muted"></span>
+  <button id="openSettings" class="primary">설정</button>
+</header>
+
+<section>
+  <h2>수익 요약</h2>
+  <table id="summary"></table>
+</section>
+
+<section>
+  <h2>보스 클리어 현황 <span class="muted">· 캐릭터를 누르면 파티 인원을 설정합니다</span></h2>
+  <div id="board"></div>
+</section>
+
+<section>
+  <h2>메소 시세 기록 (원 / 1억 메소)</h2>
+  <div id="autoStatus" class="muted"></div>
+  <label>날짜 <input id="rateDate" type="date"></label>
+  <label>서버 <select id="rateServer"></select></label>
+  <label>시세 <input id="rateValue" type="number" min="0" step="1"> 원</label>
+  <button id="addRate">수동 기록</button>
+  <div class="muted">자동 기록(아이템매니아 일 평균시세)은 fetch_rates.py가 rates.js에 쌓습니다. 같은 날짜·서버는 수동 기록이 우선합니다.
+    기록이 없는 날은 직전 시세를 이월합니다. 원화 = 해당 주 보스 메소(완료 기준, 조회 시 주차별 저장) × 그날 시세.</div>
+  <table id="rateTable"></table>
+</section>
+
+<section>
+  <details>
+    <summary><b>결정석 가격표 (수정 가능)</b></summary>
+    <div class="muted">기준: 2026-10-22 패치 반영(나무위키 '강렬한 힘의 결정' 현재 가격, 메덕후·maple.ai.kr 9/17 조정 정리와 교차 확인). 출처 간 불일치가 있어 직접 확인 후 수정하세요.</div>
+    <button id="resetPrices">기본값으로 되돌리기</button>
+    <table id="priceTable"></table>
+  </details>
+</section>
+
+<dialog id="settings">
+  <form method="dialog" class="dlg-head"><h2>설정</h2><button>닫기</button></form>
+  <div class="dlg-body">
+    <fieldset>
+      <legend>API</legend>
+      <div class="row-actions">
+        <label>API Key <input id="apiKey" type="password" size="40"></label>
+        <button id="saveKey">저장</button>
+        <label>조회일 <input id="queryDate" type="date"></label>
+        <button id="loadChars">캐릭터 목록 불러오기</button>
+      </div>
+      <div class="muted">API Key는 이 브라우저의 localStorage에만 저장됩니다. 스케줄러 API는 본인 계정 캐릭터만, 최대 14일 전까지 조회됩니다.</div>
+    </fieldset>
+    <fieldset>
+      <legend>캐릭터 선택</legend>
+      <div class="tabs" id="worldTabs"></div>
+      <div class="char-grid" id="charGrid"></div>
+      <div class="pager" id="pager"></div>
+      <div class="row-actions"><span id="selCount" class="muted"></span><button id="loadBoss" class="go">선택한 캐릭터 보스 현황 조회</button></div>
+    </fieldset>
+    <fieldset>
+      <legend>보스 클리어 인원</legend>
+      <div id="partyList" class="muted"></div>
+    </fieldset>
+  </div>
+</dialog>
+
+<dialog id="partyDlg">
+  <form method="dialog" class="dlg-head"><h2 id="partyTitle">파티 인원</h2><button>닫기</button></form>
+  <div class="dlg-body" id="partyBody"></div>
+</dialog>
+
+<script src="rates.js"></script>
+<script>
+// [주기, 보스, 난이도, 결정석 가격(메소)]
+const DEFAULT_PRICES = [
+  ['주간','자쿰','카오스',4040000], ['주간','블러디퀸','카오스',4070000], ['주간','반반','카오스',4070000],
+  ['주간','피에르','카오스',4080000], ['주간','매그너스','하드',4280000], ['주간','벨룸','카오스',4640000],
+  ['주간','파풀라투스','카오스',6550000], ['주간','스우','노멀',8350000], ['주간','데미안','노멀',8750000],
+  ['주간','가디언 엔젤 슬라임','노멀',12700000], ['주간','루시드','이지',14900000], ['주간','윌','이지',16100000],
+  ['주간','루시드','노멀',17800000], ['주간','윌','노멀',20500000], ['주간','더스크','노멀',22000000],
+  ['주간','듄켈','노멀',23700000], ['주간','데미안','하드',46400000], ['주간','스우','하드',48900000],
+  ['주간','루시드','하드',59700000], ['주간','더스크','카오스',66300000], ['주간','진 힐라','노멀',67600000],
+  ['주간','가디언 엔젤 슬라임','카오스',71300000], ['주간','윌','하드',73200000], ['주간','듄켈','하드',89600000],
+  ['주간','진 힐라','하드',100000000], ['주간','선택받은 세렌','노멀',167000000], ['주간','감시자 칼로스','이지',238000000],
+  ['주간','최초의 대적자','이지',261000000], ['주간','선택받은 세렌','하드',302000000], ['주간','카링','이지',320000000],
+  ['주간','벨로나','이지',396000000], ['주간','감시자 칼로스','노멀',479000000], ['주간','최초의 대적자','노멀',532000000],
+  ['주간','스우','익스트림',545000000], ['주간','찬란한 흉성','노멀',576000000], ['주간','카링','노멀',593000000],
+  ['주간','벨로나','노멀',824000000], ['주간','림보','노멀',995000000], ['주간','감시자 칼로스','카오스',1230000000],
+  ['주간','발드릭스','노멀',1320000000], ['주간','최초의 대적자','하드',1390000000], ['주간','유피테르','노멀',1560000000],
+  ['주간','카링','하드',1560000000], ['주간','선택받은 세렌','익스트림',1840000000], ['주간','림보','하드',2385000000],
+  ['주간','찬란한 흉성','하드',2678000000], ['주간','벨로나','하드',2950000000], ['주간','발드릭스','하드',3078000000],
+  ['주간','감시자 칼로스','익스트림',4104000000], ['주간','최초의 대적자','익스트림',4712000000], ['주간','카링','익스트림',4845000000],
+  ['주간','유피테르','하드',5387000000], ['주간','림보','익스트림',7500000000], ['주간','발드릭스','익스트림',9600000000],
+  ['월간','검은 마법사','하드',465000000], ['월간','검은 마법사','익스트림',5680000000],
+];
+const ALIASES = { '가엔슬':'가디언 엔젤 슬라임', '세렌':'선택받은 세렌', '칼로스':'감시자 칼로스',
+  '대적자':'최초의 대적자', '흉성':'찬란한 흉성', '검마':'검은 마법사', '블러디 퀸':'블러디퀸' };
+const DIFFS = ['이지','노멀','하드','카오스','익스트림'];
+const DIFF_KO = { easy: '이지', normal: '노멀', hard: '하드', chaos: '카오스', extreme: '익스트림' }; // 스케줄러 API는 영문 난이도
+const DIFF_EN = Object.fromEntries(Object.entries(DIFF_KO).map(([e, k]) => [k, e]));
+const PARTY3 = ['유피테르', '발드릭스', '벨로나', '림보', '찬란한 흉성', '최초의 대적자']; // 최대 3인 보스
+const PAGE = 10; // 캐릭터 선택 한 페이지 표시 수
+const API = 'https://open.api.nexon.com/maplestory/v1';
+const SERVERS = ['스카니아', '에오스'];
+const AUTO = window.AUTO_RATES || { rates: [], servers: {} };
+
+const $ = id => document.getElementById(id);
+const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
+const save = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+const fmt = n => Math.round(n).toLocaleString('ko-KR');
+// 1.23억 / 7,320만 형식
+const short = n => n >= 1e8 ? `${+(n / 1e8).toFixed(2)}억` : n >= 1e4 ? `${fmt(n / 1e4)}만` : fmt(n);
+const today = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10); // KST
+
+let prices = load('prices', null) || defaultPriceMap();
+let chars = load('chars', []);
+let selected = new Set(load('selected', []));
+let results = load('results', []);   // [{ocid, data}]
+let party = load('party', {});       // `${ocid}|${key}` -> 인원
+let manualRates = load('manualRates', []); // [{date, server, rate}]
+let snapshots = load('snapshots', {});     // 주 시작 목요일 -> {월드: {weekly, monthlyBoss}}
+let charWorld = '전체', charPage = 0, partyOcid = null;
+
+function defaultPriceMap() {
+  const m = {};
+  for (const [cycle, name, diff, price] of DEFAULT_PRICES) m[`${name}|${diff}`] = { cycle, name, diff, price };
+  return m;
+}
+const norm = s => (s || '').replace(/\s/g, '').replace('노말', '노멀');
+const diffKo = d => DIFF_KO[d] || d;
+const normDiff = d => norm(diffKo(d));
+const diffTag = (d, off) => `<span class="diff ${DIFF_EN[diffKo(d)] || ''}${off ? ' off' : ''}">${diffKo(d)}</span>`;
+
+// API의 보스명/난이도를 가격표 키로 변환. 없으면 원문 그대로의 키.
+function priceKey(name, diff) {
+  const d = normDiff(diff);
+  let n = norm(name);
+  for (const x of DIFFS) if (n.startsWith(x)) n = n.slice(x.length);
+  for (const [a, c] of Object.entries(ALIASES)) if (n === norm(a)) n = norm(c);
+  for (const p of Object.values(prices)) if (norm(p.name) === n && normDiff(p.diff) === d) return `${p.name}|${p.diff}`;
+  return `${name}|${diffKo(diff)}`;
+}
+// 파티 최대 인원: 익스트림 스우 2인, PARTY3 보스 3인, 나머지 6인
+function maxParty(key) {
+  const [name, diff] = key.split('|');
+  if (name === '스우' && diff === '익스트림') return 2;
+  return PARTY3.includes(name) ? 3 : 6;
+}
+function cycleOf(boss, entry) {
+  if (entry) return entry.cycle;
+  const c = boss.cycle || '';
+  if (/월|month/i.test(c)) return '월간';
+  if (/일|day/i.test(c)) return '일간';
+  return '주간';
+}
+function thursdaysInMonth(dateStr) {
+  const [y, m] = dateStr.split('-').map(Number);
+  let n = 0;
+  for (let d = 1; d <= new Date(y, m, 0).getDate(); d++) if (new Date(y, m - 1, d).getDay() === 4) n++;
+  return n;
+}
+// 해당 날짜가 속한 주의 시작 목요일 (보스 초기화 기준)
+function weekStart(dateStr) {
+  const d = new Date(dateStr.slice(0, 10) + 'T00:00:00Z'); // API date는 '2026-10-21T00:00+09:00' 형식
+  d.setUTCDate(d.getUTCDate() - (d.getUTCDay() + 3) % 7);
+  return d.toISOString().slice(0, 10);
+}
+// 자동 + 수동 시세 (같은 날짜·서버는 수동 우선), 날짜 오름차순
+function allRates() {
+  const m = new Map();
+  for (const r of AUTO.rates) m.set(`${r.date}|${r.server}`, { date: r.date, server: r.server, rate: r.close, source: '자동' });
+  for (const r of manualRates) m.set(`${r.date}|${r.server}`, { ...r, source: '수동' });
+  return [...m.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+// date 이전(포함) 가장 최근 시세. 그날 기록이 없으면 이월.
+function rateOn(server, date, list = allRates()) {
+  const r = list.filter(x => x.server === server && x.date <= date).at(-1);
+  return r && { ...r, carried: r.date !== date };
+}
+
+async function api(path, params = {}) {
+  const res = await fetch(`${API}${path}?${new URLSearchParams(params)}`, { headers: { 'x-nxopen-api-key': $('apiKey').value.trim() } });
+  const body = await res.json();
+  if (!res.ok) throw new Error(`${res.status} ${body.error?.name || ''} ${body.error?.message || ''}`);
+  return body;
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const setStatus = (msg, warn) => { $('status').textContent = msg; $('status').className = warn ? 'warn' : 'muted'; };
+
+$('openSettings').onclick = () => $('settings').showModal();
+$('saveKey').onclick = () => { save('apiKey', $('apiKey').value.trim()); setStatus('API Key 저장됨'); };
+
+$('loadChars').onclick = async () => {
+  try {
+    setStatus('캐릭터 목록 조회 중...');
+    const data = await api('/character/list');
+    chars = data.account_list.flatMap(a => a.character_list).sort((a, b) => b.character_level - a.character_level);
+    save('chars', chars);
+    charPage = 0;
+    renderChars();
+    setStatus(`캐릭터 ${chars.length}명 불러옴`);
+  } catch (e) { setStatus(`실패: ${e.message}`, true); }
+};
+
+$('loadBoss').onclick = async () => {
+  const list = chars.filter(c => selected.has(c.ocid));
+  if (!list.length) return setStatus('캐릭터를 선택하세요.', true);
+  const date = $('queryDate').value;
+  const out = [];
+  for (const [i, c] of list.entries()) {
+    setStatus(`보스 현황 조회 중... (${i + 1}/${list.length}) ${c.character_name}`);
+    try {
+      const params = { ocid: c.ocid };
+      if (date && date !== today()) params.date = date;
+      out.push({ ocid: c.ocid, data: await api('/scheduler/character-state', params) });
+    } catch (e) { out.push({ ocid: c.ocid, error: e.message, data: { character_name: c.character_name, boss_contents: [] } }); }
+    await sleep(250);
+  }
+  results = out;
+  save('results', results);
+  render();
+  setStatus(`조회 완료 (${date || today()})`);
+};
+
+// 결과 → 행 목록 (일간 보스·시즌 보스 제외)
+function rows() {
+  const all = [];
+  for (const r of results) for (const b of r.data.boss_contents || []) {
+    if (b.content_name.includes('시즌')) continue;
+    const key = priceKey(b.content_name, b.difficulty);
+    const entry = prices[key];
+    const cycle = cycleOf(b, entry);
+    if (cycle === '일간') continue;
+    const n = Math.min(party[`${r.ocid}|${key}`] || 1, maxParty(key));
+    const price = entry ? entry.price : 0;
+    all.push({ ocid: r.ocid, world: r.data.world_name, b, key, entry, cycle, n, share: Math.floor(price / n),
+      registered: b.registration_flag === 'true', done: b.complete_flag === 'true' });
+  }
+  return all;
+}
+function totals() {
+  const all = rows();
+  const sum = (cycle, pred) => all.filter(x => x.cycle === cycle && pred(x)).reduce((s, x) => s + x.share, 0);
+  const th = thursdaysInMonth($('queryDate').value || today());
+  const t = {
+    th,
+    weeklyDone: sum('주간', x => x.done), weeklyReg: sum('주간', x => x.registered),
+    monthlyBossDone: sum('월간', x => x.done), monthlyBossReg: sum('월간', x => x.registered),
+  };
+  t.monthlyDone = t.weeklyDone * th + t.monthlyBossDone;
+  t.monthlyReg = t.weeklyReg * th + t.monthlyBossReg;
+  return t;
+}
+// 월드별 메소 합계 {월드: {weeklyDone, weeklyReg, monthlyBossDone, monthlyBossReg}}
+function byWorld() {
+  const w = {};
+  for (const x of rows()) {
+    const s = w[x.world] ??= { weeklyDone: 0, weeklyReg: 0, monthlyBossDone: 0, monthlyBossReg: 0 };
+    const p = x.cycle === '월간' ? 'monthlyBoss' : 'weekly';
+    if (x.done) s[p + 'Done'] += x.share;
+    if (x.registered) s[p + 'Reg'] += x.share;
+  }
+  return w;
+}
+// 월드별 메소 × 그 월드의 date 시세 합 (SERVERS 외 월드·시세 없는 월드는 제외)
+function krwSum(perWorld, mesoOf, date, list) {
+  let sum = 0, any = false;
+  for (const s of SERVERS) {
+    const r = rateOn(s, date, list);
+    if (perWorld[s] && r) { sum += mesoOf(perWorld[s]) / 1e8 * r.rate; any = true; }
+  }
+  return any ? `${fmt(sum)} 원` : '-';
+}
+const rateLabel = (s, r) => r ? `${s} ${fmt(r.rate)}원 (${r.date}${AUTO.servers[s]?.stale && r.source === '자동' ? ', 갱신 중단' : ''})` : `${s} 시세 없음`;
+
+// 설정 > 캐릭터 선택: 서버 탭 + 레벨순 카드 10개씩
+function renderChars() {
+  const worlds = ['전체', ...new Set(chars.map(c => c.world_name))];
+  if (!worlds.includes(charWorld)) charWorld = '전체';
+  const list = chars.filter(c => charWorld === '전체' || c.world_name === charWorld);
+  const pages = Math.max(1, Math.ceil(list.length / PAGE));
+  charPage = Math.min(charPage, pages - 1);
+  $('worldTabs').innerHTML = chars.length ? worlds.map(w => `<button data-world="${w}" class="${w === charWorld ? 'on' : ''}">${w}</button>`).join('') : '';
+  $('charGrid').innerHTML = list.slice(charPage * PAGE, (charPage + 1) * PAGE).map(c => `
+    <button class="char-card ${selected.has(c.ocid) ? 'on' : ''}" data-ocid="${c.ocid}">
+      <span class="mono">${c.character_name[0]}</span><b>${c.character_name}</b>
+      <small>Lv.${c.character_level} · ${c.character_class}</small><small>${c.world_name}</small></button>`).join('')
+    || '<div class="muted">캐릭터 목록을 불러오세요.</div>';
+  const pg = (p, label, dis) => `<button data-page="${p}" ${dis ? 'disabled' : ''} class="${p === charPage && label == p + 1 ? 'on' : ''}">${label}</button>`;
+  $('pager').innerHTML = pages > 1 ? pg(0, '«', charPage === 0) + pg(charPage - 1, '‹', charPage === 0) +
+    Array.from({ length: pages }, (_, i) => pg(i, i + 1)).join('') +
+    pg(charPage + 1, '›', charPage === pages - 1) + pg(pages - 1, '»', charPage === pages - 1) : '';
+  $('selCount').textContent = `${selected.size}명 선택됨`;
+}
+$('worldTabs').onclick = e => { const b = e.target.closest('[data-world]'); if (b) { charWorld = b.dataset.world; charPage = 0; renderChars(); } };
+$('pager').onclick = e => { const b = e.target.closest('[data-page]'); if (b) { charPage = Number(b.dataset.page); renderChars(); } };
+$('charGrid').onclick = e => {
+  const b = e.target.closest('[data-ocid]');
+  if (!b) return;
+  selected.has(b.dataset.ocid) ? selected.delete(b.dataset.ocid) : selected.add(b.dataset.ocid);
+  save('selected', [...selected]);
+  renderChars();
+};
+
+function renderSummary() {
+  const t = totals(), w = byWorld(), d = today(), list = allRates(), th = t.th;
+  const others = Object.keys(w).filter(x => !SERVERS.includes(x));
+  $('summary').innerHTML = `
+    <tr><th></th><th class="num">완료 기준 (실제)</th><th class="num">스케줄러 등록 기준 (예상)</th></tr>
+    <tr><th>주간 보스 (메소)</th><td class="num">${fmt(t.weeklyDone)}</td><td class="num">${fmt(t.weeklyReg)}</td></tr>
+    <tr><th>월간 보스 (메소)</th><td class="num">${fmt(t.monthlyBossDone)}</td><td class="num">${fmt(t.monthlyBossReg)}</td></tr>
+    <tr><th>월 합계 = 주간 × 목요일 ${t.th}회 + 월간 보스</th><td class="num">${fmt(t.monthlyDone)}</td><td class="num">${fmt(t.monthlyReg)}</td></tr>
+    <tr><th>주간 원화</th><td class="num">${krwSum(w, s => s.weeklyDone, d, list)}</td><td class="num">${krwSum(w, s => s.weeklyReg, d, list)}</td></tr>
+    <tr><th>월간 원화</th><td class="num">${krwSum(w, s => s.weeklyDone * th + s.monthlyBossDone, d, list)}</td><td class="num">${krwSum(w, s => s.weeklyReg * th + s.monthlyBossReg, d, list)}</td></tr>
+    <tr><td colspan="3" class="muted">적용 시세: ${SERVERS.map(s => rateLabel(s, rateOn(s, d, list))).join(' / ')}
+      ${others.length ? `<br><span class="warn">원화 계산 제외 월드: ${others.join(', ')}</span>` : ''}</td></tr>`;
+}
+// 조회 결과의 기준일이 속한 주의 월드별 완료 메소를 저장
+function saveSnapshot() {
+  const date = results.find(r => r.data.date)?.data.date;
+  if (!date) return;
+  const w = byWorld(), snap = {};
+  for (const [k, v] of Object.entries(w)) snap[k] = { weekly: v.weeklyDone, monthlyBoss: v.monthlyBossDone };
+  snapshots[weekStart(date)] = snap;
+  save('snapshots', snapshots);
+}
+
+// 메인 보드: 캐릭터 정보(클릭 → 파티 인원) + 등록·완료 보스 목록
+function renderBoard() {
+  if (!results.length) {
+    $('board').innerHTML = '<div class="empty">설정에서 API Key를 입력하고 캐릭터를 선택해 보스 현황을 조회하세요.</div>';
+    return;
+  }
+  const all = rows();
+  $('board').innerHTML = results.map(r => {
+    const d = r.data, mine = all.filter(x => x.ocid === r.ocid && (x.registered || x.done));
+    const earned = mine.filter(x => x.done).reduce((s, x) => s + x.share, 0);
+    const cnt = d.weekly_boss_clear_count, lim = d.weekly_boss_clear_limit_count;
+    return `<div class="board-row">
+      <button class="who" data-party-of="${r.ocid}">
+        <b>${d.character_name}</b>
+        <small>Lv.${d.character_level || '-'} ${d.character_class || ''}</small>
+        <small>${d.world_name || ''} · 기준일 ${(d.date || '').slice(0, 10)}</small>
+        <span class="count ${cnt != null && cnt === lim ? 'full' : ''}">주간 처치 ${cnt ?? '-'} / ${lim ?? '-'}</span>
+        <span class="count">완료 몫 ${short(earned)}</span>
+        <span class="hint">파티 인원 설정 ›</span>
+      </button>
+      <div class="bosses">
+        ${r.error ? `<div class="warn">조회 실패: ${r.error}</div>` : ''}
+        ${mine.map(x => `<div class="boss ${x.done ? 'done' : ''}" title="${x.b.content_name} ${diffKo(x.b.difficulty)} · ${x.n}인 · 내 몫 ${fmt(x.share)}">
+          ${diffTag(x.b.difficulty)}<span class="name">${x.b.content_name}</span>
+          ${x.cycle === '월간' ? '<em>월간</em>' : ''}${x.n > 1 ? `<em>${x.n}인</em>` : ''}
+          <span class="state">${x.done ? '완료' : '미완료'}</span></div>`).join('')}
+      </div></div>`;
+  }).join('');
+}
+$('board').onclick = e => { const b = e.target.closest('[data-party-of]'); if (b) openParty(b.dataset.partyOf); };
+
+// 설정 > 보스 클리어 인원: 조회된 캐릭터 목록
+function renderPartyList() {
+  $('partyList').innerHTML = results.length
+    ? results.map(r => `<button data-party-of="${r.ocid}">${r.data.character_name}</button>`).join('')
+    : '보스 현황을 조회하면 캐릭터별로 설정할 수 있습니다.';
+}
+$('partyList').onclick = e => { const b = e.target.closest('[data-party-of]'); if (b) openParty(b.dataset.partyOf); };
+
+// 파티 인원 대화상자: 보스 | 난이도(해당 보스 전체, 등록 난이도 강조) | 파티원 | 내 몫
+function openParty(ocid) { partyOcid = ocid; renderParty(); $('partyDlg').showModal(); }
+function renderParty() {
+  const r = results.find(x => x.ocid === partyOcid);
+  if (!r) return;
+  const mine = rows().filter(x => x.ocid === partyOcid && (x.registered || x.done));
+  $('partyTitle').textContent = `${r.data.character_name} · 파티 인원`;
+  $('partyBody').innerHTML = mine.length ? `<table><tr><th>보스</th><th>난이도</th><th>파티원</th><th class="num">결정석</th><th class="num">내 몫</th></tr>
+    ${mine.map(x => {
+      const diffs = x.entry ? Object.values(prices).filter(p => p.name === x.entry.name).map(p => p.diff) : [diffKo(x.b.difficulty)];
+      const cur = x.entry ? x.entry.diff : diffKo(x.b.difficulty);
+      return `<tr><td>${x.entry ? x.entry.name : x.b.content_name}${x.done ? ' <span class="muted">✓</span>' : ''}</td>
+        <td>${diffs.map(df => diffTag(df, df !== cur)).join(' ')}</td>
+        <td><select data-party="${x.ocid}|${x.key}">${Array.from({ length: maxParty(x.key) }, (_, i) =>
+          `<option ${i + 1 === x.n ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></td>
+        <td class="num">${x.entry ? short(x.entry.price) : `<input type="number" min="0" placeholder="가격 입력" data-newprice="${x.key}" data-cycle="${x.cycle}">`}</td>
+        <td class="num">${short(x.share)}</td></tr>`;
+    }).join('')}</table>
+    <div class="muted">최대 인원: 익스트림 스우 2인 / ${PARTY3.join('·')} 3인 / 그 외 6인. 내 몫 = 결정석 가격 ÷ 인원(소수점 버림).</div>`
+    : '<div class="muted">등록·완료한 보스가 없습니다.</div>';
+}
+$('partyBody').onchange = e => {
+  const el = e.target;
+  if (el.dataset.party) { party[el.dataset.party] = Number(el.value); save('party', party); }
+  if (el.dataset.newprice) {
+    const [name, diff] = el.dataset.newprice.split('|');
+    prices[el.dataset.newprice] = { cycle: el.dataset.cycle, name, diff, price: Number(el.value) || 0 };
+    save('prices', prices);
+  }
+  render();
+};
+
+function renderRates() {
+  const list = allRates();
+  $('autoStatus').innerHTML = `자동 기록 마지막 실행: ${AUTO.updated || '없음 (fetch_rates.py 미실행)'} / ` +
+    SERVERS.map(s => { const a = AUTO.servers[s]; return a ? `${s} 마지막 시세일 ${a.last_date}${a.stale ? ' <span class="warn">[갱신 중단]</span>' : ''}` : `${s} 자동 기록 없음`; }).join(' / ');
+  const dates = [...new Set(list.map(r => r.date))].sort().reverse();
+  const cell = (s, d) => {
+    const r = rateOn(s, d, list);
+    if (!r) return '-';
+    const tag = r.carried ? ' <span class="muted">(이월)</span>' : r.source === '수동' ? ` <span class="muted">(수동)</span> <button data-del="${d}|${s}">삭제</button>` : '';
+    return fmt(r.rate) + tag;
+  };
+  $('rateTable').innerHTML = `<tr><th>날짜</th>${SERVERS.map(s => `<th class="num">${s}</th>`).join('')}<th class="num">주간 원화</th><th class="num">월간 원화</th></tr>` +
+    dates.map(d => {
+      const snap = snapshots[weekStart(d)], th = thursdaysInMonth(d);
+      return `<tr><td>${d}</td>${SERVERS.map(s => `<td class="num">${cell(s, d)}</td>`).join('')}
+        <td class="num">${snap ? krwSum(snap, s => s.weekly, d, list) : '-'}</td>
+        <td class="num">${snap ? krwSum(snap, s => s.weekly * th + s.monthlyBoss, d, list) : '-'}</td></tr>`;
+    }).join('');
+  $('rateTable').querySelectorAll('[data-del]').forEach(el => el.onclick = () => {
+    manualRates = manualRates.filter(r => `${r.date}|${r.server}` !== el.dataset.del);
+    save('manualRates', manualRates); render();
+  });
+}
+
+$('rateServer').innerHTML = SERVERS.map(s => `<option>${s}</option>`).join('');
+$('addRate').onclick = () => {
+  const date = $('rateDate').value, server = $('rateServer').value, rate = Number($('rateValue').value);
+  if (!date || !(rate > 0)) return alert('날짜와 시세를 입력하세요.');
+  manualRates = manualRates.filter(r => !(r.date === date && r.server === server)).concat({ date, server, rate });
+  save('manualRates', manualRates); render();
+};
+
+function renderPrices() {
+  $('priceTable').innerHTML = '<tr><th>주기</th><th>보스</th><th>난이도</th><th class="num">가격 (메소)</th></tr>' +
+    Object.entries(prices).map(([k, p]) => `<tr><td>${p.cycle}</td><td>${p.name}</td><td>${p.diff}</td>
+      <td class="num"><input type="number" min="0" value="${p.price}" data-price="${k}" style="width:140px"></td></tr>`).join('');
+  $('priceTable').querySelectorAll('[data-price]').forEach(el => el.onchange = () => {
+    prices[el.dataset.price].price = Number(el.value) || 0; save('prices', prices); render();
+  });
+}
+$('resetPrices').onclick = () => { if (confirm('가격표를 기본값으로 되돌릴까요?')) { prices = defaultPriceMap(); save('prices', prices); render(); } };
+$('queryDate').onchange = render;
+
+function render() {
+  saveSnapshot(); renderSummary(); renderBoard(); renderPartyList(); renderRates(); renderPrices();
+  if ($('partyDlg').open) renderParty();
+}
+
+$('apiKey').value = load('apiKey', '');
+$('queryDate').value = today();
+$('rateDate').value = today();
+renderChars();
+render();
+</script>
+</body>
+</html>
