@@ -1,5 +1,5 @@
 #!/bin/sh
-# 시세 수집 후 rates.js가 바뀌었으면 커밋·푸시한다 (Oracle Cloud VM의 cron에서 매일 실행).
+# 시세 수집 후 rates.js가 바뀌었으면 커밋·푸시한다 (집 데스크톱 작업 스케줄러에서 매일 실행).
 # 푸시되면 GitHub Pages가 자동으로 재배포된다.
 set -e
 cd "$(dirname "$0")"

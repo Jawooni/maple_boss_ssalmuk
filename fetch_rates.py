@@ -3,6 +3,7 @@
 매일 1회 실행 (아이템매니아는 하루 한 번, 10시 무렵 전날까지의 평균을 집계한다).
 최근 90일치를 받아 기존 기록과 병합한다.
 마지막 시세일이 그저께보다 오래됐으면 해당 서버를 갱신 중단(stale)으로 표시한다.
+일부 서버만 실패하면 그 서버는 기존 기록을 유지하고 나머지는 저장한다. 전부 실패하면 파일을 건드리지 않는다.
 """
 import json
 import sys
@@ -11,7 +12,14 @@ import xml.etree.ElementTree as ET
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
-SERVERS = {'스카니아': 660, '에오스': 12030}  # 아이템매니아 servercode (메이플스토리 gamecode=138)
+# 넥슨 world_name → 아이템매니아 servercode (메이플스토리 gamecode=138, 출처: itemmania.com/_json/gameserverlist.json)
+# 아이템매니아 표기가 다른 서버: RED → 레드, 헬리오스 → 핼리오스, 챌린저스1 → 챌린저스. '기타'(666)는 제외.
+SERVERS = {
+    '스카니아': 660, '베라': 658, '루나': 10102, '제니스': 662, '크로아': 664, '유니온': 8990,
+    '엘리시움': 9942, '이노시스': 8901, '레드': 9238, '오로라': 11187, '아케인': 13208, '노바': 14218,
+    '에오스': 12030, '핼리오스': 13191,
+    '챌린저스': 22562, '챌린저스2': 23200, '챌린저스3': 23201, '챌린저스4': 23202,
+}
 URL = 'https://www.itemmania.com/_xml/gamemoney_avg.xml.php?gamecode=138&servercode={code}&count=90'
 OUT = Path(__file__).with_name('rates.js')
 PREFIX = 'window.AUTO_RATES = '
@@ -41,7 +49,15 @@ def main():
     data = load()
     rates = {(r['date'], r['server']): r for r in data['rates']}
     # 네트워크 오류 시 기존 파일을 건드리지 않도록 전부 받은 뒤에 쓴다.
-    fetched = {name: fetch_prices(code) for name, code in SERVERS.items()}
+    fetched, failed = {}, []
+    for name, code in SERVERS.items():
+        try:
+            fetched[name] = fetch_prices(code)
+        except Exception as e:
+            failed.append(name)
+            print(f'{name}: 실패 ({e}) — 기존 기록 유지', file=sys.stderr)
+    if not fetched:
+        raise RuntimeError('모든 서버 수집 실패')
 
     for name, days in fetched.items():
         last = max(days) if days else None
@@ -55,11 +71,16 @@ def main():
         data['servers'][name] = {'code': SERVERS[name], 'last_date': last.isoformat() if last else None, 'stale': stale}
         print(f'{name}: 마지막 시세일 {last}, 신규 {added}일' + (' [갱신 중단]' if stale else ''))
 
+    for name in failed:  # 실패 서버는 기존 마지막 시세일로 갱신 중단 여부만 다시 판단
+        last = data['servers'].get(name, {}).get('last_date')
+        stale = last is None or date.fromisoformat(last) < today - timedelta(days=2)
+        data['servers'][name] = {'code': SERVERS[name], 'last_date': last, 'stale': stale}
+
     data['source'] = '아이템매니아 일 평균시세'
     data['rates'] = sorted(rates.values(), key=lambda r: (r['date'], r['server']))
     data['updated'] = now.strftime('%Y-%m-%d %H:%M')
     OUT.write_text(PREFIX + json.dumps(data, ensure_ascii=False, indent=1) + ';\n', encoding='utf-8')
-    print(f'{OUT} 저장 ({len(data["rates"])}건)')
+    print(f'{OUT} 저장 ({len(data["rates"])}건)' + (f', 실패 {len(failed)}개 서버: {", ".join(failed)}' if failed else ''))
 
 
 if __name__ == '__main__':

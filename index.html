@@ -53,7 +53,7 @@
   .bosses { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; align-content: start; }
   .boss { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px dashed var(--hairline); border-radius: 12px; font-size: 0.88em; color: var(--sub); }
   .boss.done { border: 1px solid transparent; background: rgba(88, 101, 242, 0.28); color: var(--ink); }
-  .boss .name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .boss .name { flex: 1; word-break: keep-all; line-height: 1.3; }
   .boss .state { font-size: 0.75em; }
   .boss.done .state { color: var(--green); font-weight: 700; }
   .boss em { font-style: normal; font-size: 0.7em; background: var(--magenta); color: #fff; padding: 1px 6px; border-radius: 16px; }
@@ -199,7 +199,7 @@ const DIFF_EN = Object.fromEntries(Object.entries(DIFF_KO).map(([e, k]) => [k, e
 const PARTY3 = ['유피테르', '발드릭스', '벨로나', '림보', '찬란한 흉성', '최초의 대적자']; // 최대 3인 보스
 const PAGE = 10; // 캐릭터 선택 한 페이지 표시 수
 const API = 'https://open.api.nexon.com/maplestory/v1';
-const SERVERS = ['스카니아', '에오스'];
+const DEFAULT_SERVERS = ['스카니아', '에오스']; // 체크한 캐릭터가 없을 때 표시할 시세 서버
 const AUTO = window.AUTO_RATES || { rates: [], servers: {} };
 
 const $ = id => document.getElementById(id);
@@ -276,6 +276,11 @@ function allRates() {
 function rateOn(server, date, list = allRates()) {
   const r = list.filter(x => x.server === server && x.date <= date).at(-1);
   return r && { ...r, carried: r.date !== date };
+}
+// 화면에 표시할 시세 서버: 체크한 캐릭터들의 월드 (없으면 DEFAULT_SERVERS)
+function shownServers() {
+  const w = [...new Set(chars.filter(c => selected.has(c.ocid)).map(c => c.world_name))].sort((a, b) => a.localeCompare(b, 'ko'));
+  return w.length ? w : DEFAULT_SERVERS;
 }
 
 async function api(path, params = {}) {
@@ -362,16 +367,16 @@ function byWorld() {
   }
   return w;
 }
-// 월드별 메소 × 그 월드의 date 시세 합 (SERVERS 외 월드·시세 없는 월드는 제외)
+// 월드별 메소 × 그 월드의 date 시세 합 (시세 없는 월드는 제외)
 function krwSum(perWorld, mesoOf, date, list) {
   let sum = 0, any = false;
-  for (const s of SERVERS) {
+  for (const s of Object.keys(perWorld)) {
     const r = rateOn(s, date, list);
-    if (perWorld[s] && r) { sum += mesoOf(perWorld[s]) / 1e8 * r.rate; any = true; }
+    if (r) { sum += mesoOf(perWorld[s]) / 1e8 * r.rate; any = true; }
   }
   return any ? `${fmt(sum)} 원` : '-';
 }
-const rateLabel = (s, r) => r ? `${s} ${fmt(r.rate)}원 (${r.date}${AUTO.servers[s]?.stale && r.source === '자동' ? ', 갱신 중단' : ''})` : `${s} 시세 없음`;
+const rateLabel = (s, r) => r ? `${esc(s)} ${fmt(r.rate)}원 (${r.date}${AUTO.servers[s]?.stale && r.source === '자동' ? ', 갱신 중단' : ''})` : `${esc(s)} 시세 없음`;
 
 // 설정 > 캐릭터 선택: 서버 탭 + 레벨순 카드 10개씩
 function renderChars() {
@@ -399,12 +404,12 @@ $('charGrid').onclick = e => {
   if (!b) return;
   selected.has(b.dataset.ocid) ? selected.delete(b.dataset.ocid) : selected.add(b.dataset.ocid);
   save('selected', [...selected]);
-  renderChars();
+  renderChars(); renderRates();
 };
 
 function renderSummary() {
   const t = totals(), w = byWorld(), d = today(), list = allRates(), th = t.th;
-  const others = Object.keys(w).filter(x => !SERVERS.includes(x));
+  const others = Object.keys(w).filter(x => !rateOn(x, d, list));
   $('summary').innerHTML = `
     <tr><th></th><th class="num">완료 기준 (실제)</th><th class="num">스케줄러 등록 기준 (예상)</th></tr>
     <tr><th>주간 보스 (메소)</th><td class="num">${fmt(t.weeklyDone)}</td><td class="num">${fmt(t.weeklyReg)}</td></tr>
@@ -412,8 +417,8 @@ function renderSummary() {
     <tr><th>월 합계 = 주간 × 목요일 ${t.th}회 + 월간 보스</th><td class="num">${fmt(t.monthlyDone)}</td><td class="num">${fmt(t.monthlyReg)}</td></tr>
     <tr><th>주간 원화</th><td class="num">${krwSum(w, s => s.weeklyDone, d, list)}</td><td class="num">${krwSum(w, s => s.weeklyReg, d, list)}</td></tr>
     <tr><th>월간 원화</th><td class="num">${krwSum(w, s => s.weeklyDone * th + s.monthlyBossDone, d, list)}</td><td class="num">${krwSum(w, s => s.weeklyReg * th + s.monthlyBossReg, d, list)}</td></tr>
-    <tr><td colspan="3" class="muted">적용 시세: ${SERVERS.map(s => rateLabel(s, rateOn(s, d, list))).join(' / ')}
-      ${others.length ? `<br><span class="warn">원화 계산 제외 월드: ${others.join(', ')}</span>` : ''}</td></tr>`;
+    <tr><td colspan="3" class="muted">적용 시세: ${Object.keys(w).filter(x => !others.includes(x)).map(s => rateLabel(s, rateOn(s, d, list))).join(' / ') || '-'}
+      ${others.length ? `<br><span class="warn">원화 계산 제외 월드 (시세 없음): ${others.map(esc).join(', ')}</span>` : ''}</td></tr>`;
 }
 // 조회 결과의 기준일이 속한 주의 월드별 완료 메소를 저장
 function saveSnapshot() {
@@ -497,20 +502,20 @@ $('partyBody').onchange = e => {
 };
 
 function renderRates() {
-  const list = allRates();
+  const list = allRates(), servers = shownServers();
   $('autoStatus').innerHTML = `자동 기록 마지막 실행: ${AUTO.updated || '없음 (fetch_rates.py 미실행)'} / ` +
-    SERVERS.map(s => { const a = AUTO.servers[s]; return a ? `${s} 마지막 시세일 ${a.last_date}${a.stale ? ' <span class="warn">[갱신 중단]</span>' : ''}` : `${s} 자동 기록 없음`; }).join(' / ');
-  const dates = [...new Set(list.map(r => r.date))].sort().reverse();
+    servers.map(s => { const a = AUTO.servers[s]; return a ? `${esc(s)} 마지막 시세일 ${a.last_date}${a.stale ? ' <span class="warn">[갱신 중단]</span>' : ''}` : `${esc(s)} 자동 기록 없음`; }).join(' / ');
+  const dates = [...new Set(list.filter(r => servers.includes(r.server)).map(r => r.date))].sort().reverse();
   const cell = (s, d) => {
     const r = rateOn(s, d, list);
     if (!r) return '-';
-    const tag = r.carried ? ' <span class="muted">(이월)</span>' : r.source === '수동' ? ` <span class="muted">(수동)</span> <button data-del="${d}|${s}">삭제</button>` : '';
+    const tag = r.carried ? ' <span class="muted">(이월)</span>' : r.source === '수동' ? ` <span class="muted">(수동)</span> <button data-del="${d}|${esc(s)}">삭제</button>` : '';
     return fmt(r.rate) + tag;
   };
-  $('rateTable').innerHTML = `<tr><th>날짜</th>${SERVERS.map(s => `<th class="num">${s}</th>`).join('')}<th class="num">주간 원화</th><th class="num">월간 원화</th></tr>` +
+  $('rateTable').innerHTML = `<tr><th>날짜</th>${servers.map(s => `<th class="num">${esc(s)}</th>`).join('')}<th class="num">주간 원화</th><th class="num">월간 원화</th></tr>` +
     dates.map(d => {
       const snap = snapshots[weekStart(d)], th = thursdaysInMonth(d);
-      return `<tr><td>${d}</td>${SERVERS.map(s => `<td class="num">${cell(s, d)}</td>`).join('')}
+      return `<tr><td>${d}</td>${servers.map(s => `<td class="num">${cell(s, d)}</td>`).join('')}
         <td class="num">${snap ? krwSum(snap, s => s.weekly, d, list) : '-'}</td>
         <td class="num">${snap ? krwSum(snap, s => s.weekly * th + s.monthlyBoss, d, list) : '-'}</td></tr>`;
     }).join('');
@@ -518,9 +523,11 @@ function renderRates() {
     manualRates = manualRates.filter(r => `${r.date}|${r.server}` !== el.dataset.del);
     save('manualRates', manualRates); render();
   });
+  const cur = $('rateServer').value;
+  $('rateServer').innerHTML = servers.map(s => `<option>${esc(s)}</option>`).join('');
+  if (servers.includes(cur)) $('rateServer').value = cur;
 }
 
-$('rateServer').innerHTML = SERVERS.map(s => `<option>${s}</option>`).join('');
 $('addRate').onclick = () => {
   const date = $('rateDate').value, server = $('rateServer').value, rate = Number($('rateValue').value);
   if (!date || !(rate > 0)) return alert('날짜와 시세를 입력하세요.');

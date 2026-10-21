@@ -1,6 +1,6 @@
 # 아이템매니아 일 평균시세를 받아 rates.js를 갱신·커밋한다 (Pages는 main 푸시로 재배포됨)
 # GitHub 러너(해외 IP)에서는 아이템매니아 연결이 시간 초과되어 수동 실행만 남김.
-# 매일 수집은 Oracle Cloud VM의 update_rates.sh가 담당 (SETUP_ORACLE.md 참고).
+# 매일 수집은 집 데스크톱 작업 스케줄러의 update_rates.sh가 담당 (SETUP_DESKTOP.md 참고).
 name: 메소 시세 갱신
 
 on:
