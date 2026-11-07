@@ -9539,100 +9539,190 @@ window.AUTO_RATES = {
    "date": "2026-11-05",
    "server": "핼리오스",
    "close": 883.0
+  },
+  {
+   "date": "2026-11-06",
+   "server": "노바",
+   "close": 1650.0
+  },
+  {
+   "date": "2026-11-06",
+   "server": "레드",
+   "close": 1570.0
+  },
+  {
+   "date": "2026-11-06",
+   "server": "루나",
+   "close": 1420.0
+  },
+  {
+   "date": "2026-11-06",
+   "server": "베라",
+   "close": 1400.0
+  },
+  {
+   "date": "2026-11-06",
+   "server": "스카니아",
+   "close": 1440.0
+  },
+  {
+   "date": "2026-11-06",
+   "server": "아케인",
+   "close": 1450.0
+  },
+  {
+   "date": "2026-11-06",
+   "server": "에오스",
+   "close": 859.0
+  },
+  {
+   "date": "2026-11-06",
+   "server": "엘리시움",
+   "close": 1480.0
+  },
+  {
+   "date": "2026-11-06",
+   "server": "오로라",
+   "close": 1470.0
+  },
+  {
+   "date": "2026-11-06",
+   "server": "유니온",
+   "close": 1990.0
+  },
+  {
+   "date": "2026-11-06",
+   "server": "이노시스",
+   "close": 1680.0
+  },
+  {
+   "date": "2026-11-06",
+   "server": "제니스",
+   "close": 1670.0
+  },
+  {
+   "date": "2026-11-06",
+   "server": "챌린저스",
+   "close": 2160.0
+  },
+  {
+   "date": "2026-11-06",
+   "server": "챌린저스2",
+   "close": 1530.0
+  },
+  {
+   "date": "2026-11-06",
+   "server": "챌린저스3",
+   "close": 1620.0
+  },
+  {
+   "date": "2026-11-06",
+   "server": "챌린저스4",
+   "close": 1097.0
+  },
+  {
+   "date": "2026-11-06",
+   "server": "크로아",
+   "close": 1490.0
+  },
+  {
+   "date": "2026-11-06",
+   "server": "핼리오스",
+   "close": 883.0
   }
  ],
  "servers": {
   "스카니아": {
    "code": 660,
-   "last_date": "2026-11-05",
+   "last_date": "2026-11-06",
    "stale": false
   },
   "에오스": {
    "code": 12030,
-   "last_date": "2026-11-05",
+   "last_date": "2026-11-06",
    "stale": false
   },
   "베라": {
    "code": 658,
-   "last_date": "2026-11-05",
+   "last_date": "2026-11-06",
    "stale": false
   },
   "루나": {
    "code": 10102,
-   "last_date": "2026-11-05",
+   "last_date": "2026-11-06",
    "stale": false
   },
   "제니스": {
    "code": 662,
-   "last_date": "2026-11-05",
+   "last_date": "2026-11-06",
    "stale": false
   },
   "크로아": {
    "code": 664,
-   "last_date": "2026-11-05",
+   "last_date": "2026-11-06",
    "stale": false
   },
   "유니온": {
    "code": 8990,
-   "last_date": "2026-11-05",
+   "last_date": "2026-11-06",
    "stale": false
   },
   "엘리시움": {
    "code": 9942,
-   "last_date": "2026-11-05",
+   "last_date": "2026-11-06",
    "stale": false
   },
   "이노시스": {
    "code": 8901,
-   "last_date": "2026-11-05",
+   "last_date": "2026-11-06",
    "stale": false
   },
   "레드": {
    "code": 9238,
-   "last_date": "2026-11-05",
+   "last_date": "2026-11-06",
    "stale": false
   },
   "오로라": {
    "code": 11187,
-   "last_date": "2026-11-05",
+   "last_date": "2026-11-06",
    "stale": false
   },
   "아케인": {
    "code": 13208,
-   "last_date": "2026-11-05",
+   "last_date": "2026-11-06",
    "stale": false
   },
   "노바": {
    "code": 14218,
-   "last_date": "2026-11-05",
+   "last_date": "2026-11-06",
    "stale": false
   },
   "핼리오스": {
    "code": 13191,
-   "last_date": "2026-11-05",
+   "last_date": "2026-11-06",
    "stale": false
   },
   "챌린저스": {
    "code": 22562,
-   "last_date": "2026-11-05",
+   "last_date": "2026-11-06",
    "stale": false
   },
   "챌린저스2": {
    "code": 23200,
-   "last_date": "2026-11-05",
+   "last_date": "2026-11-06",
    "stale": false
   },
   "챌린저스3": {
    "code": 23201,
-   "last_date": "2026-11-05",
+   "last_date": "2026-11-06",
    "stale": false
   },
   "챌린저스4": {
    "code": 23202,
-   "last_date": "2026-11-05",
+   "last_date": "2026-11-06",
    "stale": false
   }
  },
  "source": "아이템매니아 일 평균시세",
- "updated": "2026-11-06 18:06"
+ "updated": "2026-11-07 11:00"
 };
